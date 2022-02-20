@@ -390,19 +390,21 @@ ushort gen_crc16(char *data, ushort size)
 
 __kernel void hash_main(int iterations, __global unsigned int  * main, int main_size, __global unsigned int  * inner, int inner_size, __global unsigned int * res)
 {
-    // unsigned int idx = get_global_id(0);
+    unsigned int idx = get_global_id(0);
     __private uint main_copy[18];
     for (int i = 0; i < 18; i++) {
         main_copy[i] = main[i];
     }
 
-     __private uint inner_copy[12];
-    for (int i = 0; i < 12; i++) {
+     __private uint inner_copy[17];
+    for (int i = 0; i < 17; i++) {
         inner_copy[i] = inner[i];
     }
 
     for (int i = 0; i < iterations; i++) {
-        // TODO: modify inner_copy 
+        inner_copy[10] = i;
+        inner_copy[11] = idx;
+
         uint inner_hash[8] = {0};
         hash(inner_copy, inner_size, inner_hash);
 
@@ -427,15 +429,13 @@ __kernel void hash_main(int iterations, __global unsigned int  * main, int main_
         repr[34] = crc16 / 256;
         repr[35] = crc16 % 256; 
 
-        // char result[48] = {0};
-        // encode_base64(repr, 36, result);
-        // for (int i = 0; i < 48; i++) {
-        //     printf("%02x", result[i]);
-        // }
-        // printf("\n"); 
+        char result[48] = {0};
+        encode_base64(repr, 36, result);
 
-        for (int i = 0; i < 8; i++) {
-            res[i] = ((uint*)main_hash)[i];
-        }
+        if (result[45] == 'w' && result[46] == 'h' && result[47] == 'a') {
+            for (int i = 0; i < 8; i++) {
+                res[i] = ((uint*)main_hash)[i];
+            }
+        } 
     }
 }

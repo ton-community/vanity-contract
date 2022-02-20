@@ -1,23 +1,22 @@
-"Asm.fif" include
 PROGRAM{
   DECLPROC recv_internal
-  DECLPROC recv_external
   recv_internal PROC:<{
-    DROP
-    CTOS
-    4 LDU
-    NIP
-    LDMSGADDR
-    NIP
-    LDREF
-    LDREF
-    DROP
-    SWAP
+    //  in_msg_cell in_msg
+    NIP	//  in_msg
+    c4 PUSH	//  in_msg _3
+    CTOS	//  in_msg ds
+    5 PUSHINT	//  in_msg ds _6=5
+    SDSKIPFIRST	//  in_msg ds
+    LDMSGADDR	//  in_msg _37 _36
+    NIP	//  in_msg ds
+    8 PUSHPOW2	//  in_msg ds _12=256
+    SDSKIPFIRST	//  in_msg ds
+    ENDS
+    LDREF	//  code in_msg
+    LDREF	//  code data in_msg
+    ENDS
+    SWAP	//  data code
     SETCODE
     c4 POP
-  }>
-  recv_external PROC:<{
-    DROP
-    72 THROW
   }>
 }END>c

@@ -3,6 +3,7 @@ import { mnemonicToWalletKey } from 'ton-crypto'
 import fs from 'fs';
 import qs from 'qs';
 import qrcode from 'qrcode-terminal';
+import { randomBytes } from 'crypto';
 
 
 //
@@ -89,18 +90,20 @@ function getRepr(cell: Cell) {
 
 
 const contractCode = Cell.fromBoc(fs.readFileSync(__dirname + '/vanity-address.cell'))[0];
-const contractData = new Cell();
-const salt = Buffer.from('1c85f256c6d974818d6e', 'hex');
+const salt = Buffer.from('66af50c6685145280c287ea35c289ce100f0f791717e03ecb46e5011ea03dc7f', 'hex');
 const owner = Address.parseFriendly('EQB74ererQXuWClKBzI-LUHYxBtFbxHlwRb_k67I7TEdmYPL').address
-contractData.bits.writeAddress(owner)
-contractData.bits.writeBuffer(salt);
+const contractData = new Cell();
+contractData.bits.writeInt(0, 5); // padding
+contractData.bits.writeAddress(owner); // owner
+contractData.bits.writeBuffer(salt); // salt
 let init = new Cell();
 new StateInit({
     code: contractCode,
     data: contractData
 }).writeTo(init);
-let address = new Address(0, init.hash());
-console.log(getRepr(contractData).toString('hex'))
+let address = new Address(0, Buffer.from('76badb87e473effcfac25c92b662347307b491d4b99b469cb23488b858be2b93', 'hex'));
+console.log('main', getRepr(init).toString('hex'))
+console.log('inner', getRepr(contractData).toString('hex'))
 console.log(salt.toString('hex'));
 console.log(address.toFriendly(), address.toString());
 let link = 'https://test.tonhub.com/transfer/' + address.toFriendly() + '?' + qs.stringify({
