@@ -432,12 +432,17 @@ __kernel void hash_main(int iterations, __global unsigned int  * main, int main_
         char result[48] = {0};
         encode_base64(repr, 36, result);
 
-        if (result[43] == 'h' && result[44] == 'a' && result[45] == 'l' && result[46] == 'e' && result[47] == 's') {
-            for (int i = 0; i < 8; i++) {
-                res[i] = ((uint*)main_hash)[i];
-            }
-            res[8] = i;
-            res[9] = idx;
+        if (
+            (result[42] == 'w' || result[42] == 'W') && 
+            (result[43] == 'h' || result[43] == 'H') && 
+            (result[44] == 'a' || result[44] == 'A') && 
+            (result[45] == 'l' || result[45] == 'L') && 
+            (result[46] == 'e' || result[46] == 'E') && 
+            (result[47] == 's' || result[47] == 'S')
+        ) {
+            int slot = i % 128;
+            res[(slot*2)] = i;
+            res[(slot*2)+1] = idx;
         } 
     }
 }

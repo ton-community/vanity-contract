@@ -41,38 +41,47 @@ def solver():
     inner_data = np.frombuffer(inner, dtype=np.uint32)
     inner_g = cl.Buffer(context, mf.READ_ONLY | mf.COPY_HOST_PTR, 68, hostbuf=inner_data)
 
-    res = np.full(10, 0x00000000, np.uint32)
+    res = np.full(256, 0xffffffff, np.uint32)
     res_g = cl.Buffer(context, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=res)
 
     start = time.time()
     threads = 10000
     iterations = 10000
     program.hash_main(queue, (threads,), None, np.int32(iterations), main_g, np.int32(71), inner_g, np.int32(68), res_g).wait()
-    result = np.empty(10, np.uint32)
+    result = np.empty(256, np.uint32)
     cl.enqueue_copy(queue, result, res_g).wait()
 
     print('Speed: ', threads * iterations / (time.time() - start) / 1e6, 'Mh/s') 
     
-    if not result.any():
-        return
-    salt_np = np.frombuffer(salt, np.uint32)
-    salt_np[0] ^= result[8]
-    salt_np[1] ^= result[9]
-    hdata1 = inner_base + salt_np.tobytes()
-    hash1 = hashlib.sha256(hdata1).digest()
-    main[39:71] = hash1
-    if hashlib.sha256(main[:71]).hexdigest() != result[:8].tobytes().hex():
-        print('Invalid hash')
-        return
+    ps = list(np.where(result != 0xffffffff))[0]
+    if len(ps):
+        for j in range(0, len(ps), 2):
+            p = ps[j]
+            assert ps[j + 1] == p + 1
+            a = result[p]
+            b = result[p+1]
+
+            salt_np = np.frombuffer(salt, np.uint32)
+            salt_np[0] ^= a
+            salt_np[1] ^= b
+            hdata1 = inner_base + salt_np.tobytes()
+            hash1 = hashlib.sha256(hdata1).digest()
+            main[39:71] = hash1
+
+            hs = hashlib.sha256(main[:71]).digest()
     
-    address = bytearray()
-    address += b'\x11\x00'
-    address += result[:8].tobytes()
-    address += b'\x00\x00'
-    crc = crc16(address)
-    address[34] = crc[0]
-    address[35] = crc[1]
-    print('Found: ', base64.urlsafe_b64encode(address), 'salt: ', salt_np.tobytes().hex())
+            address = bytearray()
+            address += b'\x11\x00'
+            address += hs
+            address += b'\x00\x00'
+            crc = crc16(address)
+            address[34] = crc[0]
+            address[35] = crc[1]
+            found = base64.urlsafe_b64encode(address)
+            if found.lower().endswith(b'whales'):
+                print('Found: ', str(found), 'salt: ', salt_np.tobytes().hex())
+            else:
+                print('Miss: ', str(found), 'salt: ', salt_np.tobytes().hex())
 
 
 while True:
