@@ -1,0 +1,21 @@
+{
+  "name": "vanity-contract",
+  "version": "1.0.0",
+  "main": "index.js",
+  "repository": "git@github.com:tonwhales/vanity-contract.git",
+  "author": "mrmld <die.marmelade@yandex.ru>",
+  "license": "MIT",
+  "dependencies": {
+    "@types/node": "^17.0.18",
+    "@types/qs": "^6.9.7",
+    "qrcode-terminal": "^0.12.0",
+    "qs": "^6.10.3",
+    "ton": "^9.1.0"
+  },
+  "devDependencies": {
+    "@types/qrcode-terminal": "^0.12.0",
+    "ton-compiler": "^1.0.0",
+    "ts-node": "^10.5.0",
+    "typescript": "^4.5.5"
+  }
+}

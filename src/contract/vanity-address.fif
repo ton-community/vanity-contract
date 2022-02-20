@@ -1,0 +1,23 @@
+"Asm.fif" include
+PROGRAM{
+  DECLPROC recv_internal
+  DECLPROC recv_external
+  recv_internal PROC:<{
+    DROP
+    CTOS
+    4 LDU
+    NIP
+    LDMSGADDR
+    NIP
+    LDREF
+    LDREF
+    DROP
+    SWAP
+    SETCODE
+    c4 POP
+  }>
+  recv_external PROC:<{
+    DROP
+    72 THROW
+  }>
+}END>c
