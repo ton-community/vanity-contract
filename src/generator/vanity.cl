@@ -402,8 +402,8 @@ __kernel void hash_main(int iterations, __global unsigned int  * main, int main_
     }
 
     for (int i = 0; i < iterations; i++) {
-        inner_copy[10] = i;
-        inner_copy[11] = idx;
+        inner_copy[9] ^= i;
+        inner_copy[10] ^= idx;
 
         uint inner_hash[8] = {0};
         hash(inner_copy, inner_size, inner_hash);
@@ -432,10 +432,12 @@ __kernel void hash_main(int iterations, __global unsigned int  * main, int main_
         char result[48] = {0};
         encode_base64(repr, 36, result);
 
-        if (result[45] == 'w' && result[46] == 'h' && result[47] == 'a') {
+        if (result[43] == 'h' && result[44] == 'a' && result[45] == 'l' && result[46] == 'e' && result[47] == 's') {
             for (int i = 0; i < 8; i++) {
                 res[i] = ((uint*)main_hash)[i];
             }
+            res[8] = i;
+            res[9] = idx;
         } 
     }
 }

@@ -3,8 +3,6 @@ import { mnemonicToWalletKey } from 'ton-crypto'
 import fs from 'fs';
 import qs from 'qs';
 import qrcode from 'qrcode-terminal';
-import { randomBytes } from 'crypto';
-
 
 //
 // Hash Content
@@ -90,7 +88,7 @@ function getRepr(cell: Cell) {
 
 
 const contractCode = Cell.fromBoc(fs.readFileSync(__dirname + '/vanity-address.cell'))[0];
-const salt = Buffer.from('66af50c6685145280c287ea35c289ce100f0f791717e03ecb46e5011ea03dc7f', 'hex');
+const salt = Buffer.from('4968d2a85f2a9de4bd6920ba29ab711e4124b1b288602d7b152389e5f15f8e01', 'hex');
 const owner = Address.parseFriendly('EQB74ererQXuWClKBzI-LUHYxBtFbxHlwRb_k67I7TEdmYPL').address
 const contractData = new Cell();
 contractData.bits.writeInt(0, 5); // padding
@@ -101,7 +99,7 @@ new StateInit({
     code: contractCode,
     data: contractData
 }).writeTo(init);
-let address = new Address(0, Buffer.from('76badb87e473effcfac25c92b662347307b491d4b99b469cb23488b858be2b93', 'hex'));
+let address = new Address(0, init.hash());
 console.log('main', getRepr(init).toString('hex'))
 console.log('inner', getRepr(contractData).toString('hex'))
 console.log(salt.toString('hex'));
