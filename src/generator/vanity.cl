@@ -342,25 +342,24 @@ void encode_base64(char * data, uint dataLen, char * result);
 void encode_base64(char * data, uint dataLen, char * result) {
     size_t in_len = dataLen;
     size_t i;
-    char *p = result;
-
+    int idx = 0;
     for (i = 0; i < in_len - 2; i += 3) {
-      *p++ = sEncodingTable[(data[i] >> 2) & 0x3F];
-      *p++ = sEncodingTable[((data[i] & 0x3) << 4) | ((int) (data[i + 1] & 0xF0) >> 4)];
-      *p++ = sEncodingTable[((data[i + 1] & 0xF) << 2) | ((int) (data[i + 2] & 0xC0) >> 6)];
-      *p++ = sEncodingTable[data[i + 2] & 0x3F];
+      result[idx++] = sEncodingTable[(data[i] >> 2) & 0x3F];
+      result[idx++] = sEncodingTable[((data[i] & 0x3) << 4) | ((int) (data[i + 1] & 0xF0) >> 4)];
+      result[idx++] = sEncodingTable[((data[i + 1] & 0xF) << 2) | ((int) (data[i + 2] & 0xC0) >> 6)];
+      result[idx++] = sEncodingTable[data[i + 2] & 0x3F];
     }
     if (i < in_len) {
-      *p++ = sEncodingTable[(data[i] >> 2) & 0x3F];
+      result[idx++] = sEncodingTable[(data[i] >> 2) & 0x3F];
       if (i == (in_len - 1)) {
-        *p++ = sEncodingTable[((data[i] & 0x3) << 4)];
-        *p++ = '=';
+        result[idx++] = sEncodingTable[((data[i] & 0x3) << 4)];
+        result[idx++] = '=';
       }
       else {
-        *p++ = sEncodingTable[((data[i] & 0x3) << 4) | ((int) (data[i + 1] & 0xF0) >> 4)];
-        *p++ = sEncodingTable[((data[i + 1] & 0xF) << 2)];
+        result[idx++] = sEncodingTable[((data[i] & 0x3) << 4) | ((int) (data[i + 1] & 0xF0) >> 4)];
+        result[idx++] = sEncodingTable[((data[i + 1] & 0xF) << 2)];
       }
-      *p++ = '=';
+      result[idx++] = '=';
     }
 }
 
@@ -388,15 +387,23 @@ ushort gen_crc16(char *data, ushort size)
     return reg;
 }
 
-__kernel void hash_main(int iterations, __global unsigned int  * main, int main_size, __global unsigned int  * inner, int inner_size, __global unsigned int * res)
+__kernel void hash_main(
+    int iterations, 
+    ushort flags, 
+    int main_size,
+    __global unsigned int  * main, 
+    int inner_size, 
+    __global unsigned int  * inner, 
+    __global unsigned int * res
+)
 {
     unsigned int idx = get_global_id(0);
-    __private uint main_copy[18];
+    uint main_copy[18];
     for (int i = 0; i < 18; i++) {
         main_copy[i] = main[i];
     }
 
-     __private uint inner_copy[17];
+    uint inner_copy[17];
     for (int i = 0; i < 17; i++) {
         inner_copy[i] = inner[i];
     }
@@ -416,8 +423,9 @@ __kernel void hash_main(int iterations, __global unsigned int  * main, int main_
         hash(main_copy, main_size, main_hash);
 
         char repr[36];
-        repr[0] = 0x11;
-        repr[1] = 0x00;
+        repr[0] = flags / 256; // flags
+        repr[1] = flags % 256;
+
         for (int i = 2; i < 34; i++) {
              repr[i] = ((char*)main_hash)[i - 2];
         }
@@ -432,15 +440,8 @@ __kernel void hash_main(int iterations, __global unsigned int  * main, int main_
         char result[48] = {0};
         encode_base64(repr, 36, result);
 
-        if (
-            (result[42] == 'w' || result[42] == 'W') && 
-            (result[43] == 'h' || result[43] == 'H') && 
-            (result[44] == 'a' || result[44] == 'A') && 
-            (result[45] == 'l' || result[45] == 'L') && 
-            (result[46] == 'e' || result[46] == 'E') && 
-            (result[47] == 's' || result[47] == 'S')
-        ) {
-            int slot = i % 128;
+        if (<<CONDITION>>) {
+            int slot = i % 1024;
             res[(slot*2)] = i;
             res[(slot*2)+1] = idx;
         } 
