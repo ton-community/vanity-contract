@@ -158,7 +158,7 @@ def solver():
             address[34] = crc[0]
             address[35] = crc[1]
             found = base64.urlsafe_b64encode(address).decode('utf-8')
-            if (len(args.end) > 0 and found.lower().endswith(args.end)) or (len(args.start) > 0 and found[3:].startswith(args.start)):
+            if (len(args.end) > 0 and found.lower().endswith(args.end.lower())) or (len(args.start) > 0 and found[3:].lower().startswith(args.start.lower())):
                 print('Found: ', found, 'salt: ', salt_np.tobytes().hex())
             else:
                 misses += 1
