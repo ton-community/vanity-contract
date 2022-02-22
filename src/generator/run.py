@@ -1,4 +1,5 @@
 import hashlib
+from threading import Thread
 import pyopencl as cl
 import numpy as np
 import base64
@@ -12,6 +13,8 @@ parser.add_argument('--end', type=str, default='', help='Search in the end of ad
 parser.add_argument('--start', type=str, default='', help='Search in the start of address')
 parser.add_argument('-nb', action='store_true', default=False, help='Search for non-bouncable addresses')
 parser.add_argument('-t', action='store_true', default=False, help='Search for testnet addresses')
+parser.add_argument('--threads', type=int, help='Worker threads')
+parser.add_argument('--its', type=int, default=10000, help='Worker iterations')
 parser.add_argument('-w', type=int, required=True, help='Address workchain')
 parser.add_argument('--case-sensitive', action='store_true', help='Search for case sensitive address (case insensitive by default)')
 
@@ -71,15 +74,6 @@ print("Kernel conditions:", ' && '.join(kernel_conditions))
 print()
 
 
-device = cl.get_platforms()[0].get_devices()[2]
-print("Using device: ", device.name)
-context = cl.Context(devices=[device], dev_type=None)
-queue = cl.CommandQueue(context)
-
-kernel_code = open(os.path.join(os.path.dirname(__file__), 'vanity.cl')).read()
-kernel_code = kernel_code.replace("<<CONDITION>>", ' && '.join(kernel_conditions))
-program = cl.Program(context, kernel_code).build()
-
 mf = cl.mem_flags
 
 def crc16(data):
@@ -96,7 +90,7 @@ def crc16(data):
                 reg ^= 0x1021
     return reg.to_bytes(2, byteorder='big')
 
-def solver():
+def solver(dev, context, queue, program):
     main = bytearray.fromhex('02013400010000ab385daef0ba67bf96a5dc2c6e2a48b4b0ccd17937748f030b998c6d6c19c0e7e502c2657462e3522b2515e4798636ff5967d5f1db1762053027528f3550ce4300')
     data = np.frombuffer(main, dtype=np.uint32)
     main_g = cl.Buffer(context, mf.READ_ONLY | mf.COPY_HOST_PTR, 72, hostbuf=data)
@@ -109,14 +103,9 @@ def solver():
     res = np.full(2048, 0xffffffff, np.uint32)
     res_g = cl.Buffer(context, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=res)
 
-    end = np.frombuffer((args.end or '\0').encode('utf-8'), dtype=np.byte)
-    end_g = cl.Buffer(context,  mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=end)
-    start = np.frombuffer((args.start or '\0').encode('utf-8'), dtype=np.byte)
-    start_g = cl.Buffer(context,  mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=start)
-
     start = time.time()
-    threads = 10000
-    iterations = 10000
+    threads = args.threads or (dev.max_work_group_size * dev.max_compute_units)
+    iterations = args.its
     program.hash_main(
         queue, 
         (threads,), 
@@ -160,10 +149,41 @@ def solver():
             found = base64.urlsafe_b64encode(address).decode('utf-8')
             if (len(args.end) > 0 and found.lower().endswith(args.end.lower())) or (len(args.start) > 0 and found[3:].lower().startswith(args.start.lower())):
                 print('Found: ', found, 'salt: ', salt_np.tobytes().hex())
+                with open('found.txt', 'a') as f:
+                    f.write(f'{found} {salt_np.tobytes().hex()}\n')
             else:
                 misses += 1
     print('Speed:', round(threads * iterations / (time.time() - start) / 1e6), 'Mh/s, miss:', misses) 
 
+kernel_code = open(os.path.join(os.path.dirname(__file__), 'vanity.cl')).read()
+kernel_code = kernel_code.replace("<<CONDITION>>", ' && '.join(kernel_conditions))
 
-while True:
-    solver()
+stopped = False
+def device_thread(device):
+    context = cl.Context(devices=[device], dev_type=None)
+    queue = cl.CommandQueue(context)
+    program = cl.Program(context, kernel_code).build()
+
+    while not stopped:
+        solver(device, context, queue, program)
+    pass
+
+platforms = cl.get_platforms()
+dev_n = 1
+threads = []
+for platform in platforms:
+    devices = platform.get_devices(cl.device_type.GPU)
+    for dev in devices:
+        print("Using device: ", dev.name)
+        t = Thread(None, device_thread, 'dev-{}'.format(dev_n), (dev,))
+        threads.append(t)
+        t.start()
+        dev_n += 1
+
+try:
+    [t.join(1) for t in threads]
+except KeyboardInterrupt:
+    print('Interrupted')
+    stopped = True
+    os._exit(0)
+        
