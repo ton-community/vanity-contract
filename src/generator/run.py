@@ -91,7 +91,7 @@ def crc16(data):
     return reg.to_bytes(2, byteorder='big')
 
 def solver(dev, context, queue, program):
-    main = bytearray.fromhex('02013400010000ab385daef0ba67bf96a5dc2c6e2a48b4b0ccd17937748f030b998c6d6c19c0e7e502c2657462e3522b2515e4798636ff5967d5f1db1762053027528f3550ce4300')
+    main = bytearray.fromhex('020134000100009b598624c569108630d69c8422af4b5971cd9d515ad83d4facec29e25b2f9c75d7c2f9ece11a5845e257cc6c8bd375459059902ce9f6206696a8964c5e7e078100')
     data = np.frombuffer(main, dtype=np.uint32)
     main_g = cl.Buffer(context, mf.READ_ONLY | mf.COPY_HOST_PTR, 72, hostbuf=data)
 

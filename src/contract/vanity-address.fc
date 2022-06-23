@@ -14,7 +14,7 @@
     slice sender = cs~load_msg_addr();
 
     ;; Allow deployment only to owner
-    throw_unless(slice_equal(sender, owner), 8);
+    throw_unless(8, slice_equal(sender, owner));
 
     ;; Set code and data
     var code = in_msg~load_ref();

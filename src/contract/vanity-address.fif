@@ -2,16 +2,23 @@ PROGRAM{
   DECLPROC recv_internal
   recv_internal PROC:<{
     //  in_msg_cell in_msg
-    NIP	//  in_msg
-    c4 PUSH	//  in_msg _3
-    CTOS	//  in_msg ds
-    5 PUSHINT	//  in_msg ds _6=5
-    SDSKIPFIRST	//  in_msg ds
-    LDMSGADDR	//  in_msg _37 _36
-    NIP	//  in_msg ds
-    8 PUSHPOW2	//  in_msg ds _12=256
-    SDSKIPFIRST	//  in_msg ds
+    c4 PUSH	//  in_msg_cell in_msg _3
+    CTOS	//  in_msg_cell in_msg ds
+    5 PUSHINT	//  in_msg_cell in_msg ds _6=5
+    SDSKIPFIRST	//  in_msg_cell in_msg ds
+    LDMSGADDR	//  in_msg_cell in_msg owner ds
+    8 PUSHPOW2	//  in_msg_cell in_msg owner ds _12=256
+    SDSKIPFIRST	//  in_msg_cell in_msg owner ds
     ENDS
+    s0 s2 XCHG	//  owner in_msg in_msg_cell
+    CTOS	//  owner in_msg cs
+    4 LDU	//  owner in_msg _39 _38
+    NIP	//  owner in_msg cs
+    LDMSGADDR	//  owner in_msg _41 _40
+    DROP	//  owner in_msg sender
+    ROT	//  in_msg sender owner
+    SDEQ	//  in_msg _25
+    8 THROWIFNOT
     LDREF	//  code in_msg
     LDREF	//  code data in_msg
     ENDS
