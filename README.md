@@ -34,6 +34,59 @@ Found:  Ef9Qa5dP5Y4E6xBURdBBF8_P8XMTdLJaQLGkoUA5Eya2CLUB salt:  b0181470628ea0c3
 
 Store this salt and an address somwhere for future deployment.
 
+## Deployment
+
+Deployment is performed by sending an internal message with desired code and data.
+
+Code example how to deploy:
+
+```ts
+
+import qs from 'qs';
+import { Address, beginCell, Cell } from 'ton';
+
+const salt = '<salt>';
+const owner = Address.parse('<owner>');
+const targetAddress = Address.parse('<address>');
+const testnet = true;
+
+// Vanity contract code and data
+const vanityCode = Cell.fromBoc(
+  Buffer.from('te6ccgEBAgEAMgABFP8A9KQT9LzyyAsBAEbT7UTQddch+kCDB9ch0QLQ0wMx+kAwWMcF8ojU1NEB+wTtVA==')
+)[0];
+const vanityData = beginCell()
+  .storeUint(0, 5)
+  .storeAddress(owner)
+  .storeBuffer(Buffer.from(salt, 'hex'))
+  .endCell();
+let msg = new StateInit({
+  code: vanityCode,
+  data: vanityData,
+});
+let cell = new Cell();
+msg.writeTo(cell);
+let vanityInit = cell.toBoc({ idx: false }).toString("base64");
+
+// Your contract code and data
+const code = Cell.fromBoc('....');
+const data = Cell.fromBoc('....');
+const deployMessage = beginCell()
+  .storeRef(code)
+  .storeRef(data)
+  .toBoc({ idx: false })
+  .toString("base64");
+
+// Create and display link
+let link = `https://${testnet ? 'test.' : ''}tonhub.com/transfer/` + targetAddress.toFriendly({ testOnly: testnet }) + "?" + qs.stringify({
+  text: "Deploy contract",
+  amount: amount.toString(1),
+  init: vanityInit,
+  bin: deployMessage,
+});
+console.log("Deploy: " + link);
+
+```
+
 ## License
 
 MIT
