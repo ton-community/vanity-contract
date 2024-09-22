@@ -21,7 +21,7 @@ Checkout this repository on your machine with `Python 3.9` installed. It is reco
 Execute in `src/generator` and replace `<suffix>` with desired suffix name and `<owner>` with an address of a wallet that then could be used for deployment.
 
 ```bash
-python3.9 run.py --end <suffix> -w -1 --case-sensitive <owner>
+python3.9 run.py --end '<suffix>' -w -1 --case-sensitive <owner>
 ```
 
 Example output:
