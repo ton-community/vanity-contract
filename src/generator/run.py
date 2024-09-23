@@ -17,6 +17,8 @@ parser.add_argument('--threads', type=int, help='Worker threads')
 parser.add_argument('--its', type=int, default=10000, help='Worker iterations')
 parser.add_argument('-w', type=int, required=True, help='Address workchain')
 parser.add_argument('--case-sensitive', action='store_true', help='Search for case sensitive address (case insensitive by default)')
+parser.add_argument('--early-prefix', action='store_true', help='Check prefix starting from third character (subject to some address format restrictions, fourth by default)')
+parser.add_argument('--only-one', action='store_true', help='Stop when an address is found (runs until interrupted by default)')
 
 
 args = parser.parse_args()
@@ -45,14 +47,19 @@ if not args.case_sensitive:
     args.start = args.start.lower()
     args.end = args.end.lower()
 
+start_offset = 3
+
 conditions = []
 kernel_conditions = []
+if args.early_prefix:
+    conditions.append('early-prefix')
+    start_offset = 2
 if args.case_sensitive:
     conditions.append('case-sensitive')
 if args.start:
     conditions.append(f'starting with "{args.start}"')
     for i, c in enumerate(args.start):
-        pos = i + 3
+        pos = i + start_offset
         if args.case_sensitive:
             kernel_conditions.append(f"result[{pos}] == '{c}'")
         else:
@@ -75,6 +82,7 @@ print()
 
 
 mf = cl.mem_flags
+n_found = 0
 
 def crc16(data):
     reg = 0
@@ -91,6 +99,7 @@ def crc16(data):
     return reg.to_bytes(2, byteorder='big')
 
 def solver(dev, context, queue, program):
+    global n_found
     main = bytearray.fromhex('020134000100009b598624c569108630d69c8422af4b5971cd9d515ad83d4facec29e25b2f9c75d7c2f9ece11a5845e257cc6c8bd375459059902ce9f6206696a8964c5e7e078100')
     data = np.frombuffer(main, dtype=np.uint32)
     main_g = cl.Buffer(context, mf.READ_ONLY | mf.COPY_HOST_PTR, 72, hostbuf=data)
@@ -147,13 +156,17 @@ def solver(dev, context, queue, program):
             address[34] = crc[0]
             address[35] = crc[1]
             found = base64.urlsafe_b64encode(address).decode('utf-8')
-            if (len(args.end) > 0 and found.lower().endswith(args.end.lower())) or (len(args.start) > 0 and found[3:].lower().startswith(args.start.lower())):
+            if (len(args.end) > 0 and found.lower().endswith(args.end.lower())) or (len(args.start) > 0 and found[start_offset:].lower().startswith(args.start.lower())):
                 print('Found: ', found, 'salt: ', salt_np.tobytes().hex())
                 with open('found.txt', 'a') as f:
                     f.write(f'{found} {salt_np.tobytes().hex()}\n')
+                if args.only_one:
+                    stopped = True
+                    os._exit(0)
+                n_found += 1
             else:
                 misses += 1
-    print('Speed:', round(threads * iterations / (time.time() - start) / 1e6), 'Mh/s, miss:', misses) 
+    print('Speed:', round(threads * iterations / (time.time() - start) / 1e6), 'Mh/s, miss: ' + str(misses) + ', found: ' + str(n_found)) 
 
 kernel_code = open(os.path.join(os.path.dirname(__file__), 'vanity.cl')).read()
 kernel_code = kernel_code.replace("<<CONDITION>>", ' && '.join(kernel_conditions))
